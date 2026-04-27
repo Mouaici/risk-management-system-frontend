@@ -16,11 +16,23 @@ import { UrgentRisksCard } from "../components/cards/UrgentRisksCard.jsx";
 import { toTimestamp } from "../utils/date.js";
 import {
   buildLatestAssessmentByRiskId,
+  RISK_BANDS,
   getRiskBand,
   toSeverityScore,
 } from "../utils/risk.js";
 
 const DASHBOARD_LIMIT = 5;
+const EMPTY_RISK_SUMMARY = {
+  total: 0,
+  open: 0,
+  critical: 0,
+  inProgress: 0,
+  mitigated: 0,
+  needsAction: 0,
+  suggestedAction: 0,
+  underObservation: 0,
+  unknown: 0,
+};
 
 const sortByDateDescending = (a, b) => {
   const left = toTimestamp(a) ?? Number.NEGATIVE_INFINITY;
@@ -133,12 +145,60 @@ const toIncidents = (incidents) => {
   );
 };
 
+const toRiskSummary = (risks) => {
+  return risks.reduce(
+    (summary, risk) => {
+      const normalizedStatus = String(risk.status || "")
+        .toLowerCase()
+        .trim();
+      const isMitigated =
+        normalizedStatus.includes("mitigated") ||
+        normalizedStatus.includes("resolved") ||
+        normalizedStatus.includes("closed") ||
+        normalizedStatus.includes("complete");
+      const isInProgress =
+        normalizedStatus.includes("in progress") ||
+        normalizedStatus.includes("ongoing") ||
+        normalizedStatus.includes("active");
+      const isOpen = !isMitigated;
+
+      if (isOpen) {
+        summary.open += 1;
+      }
+      if (isInProgress) {
+        summary.inProgress += 1;
+      }
+      if (isMitigated) {
+        summary.mitigated += 1;
+      }
+
+      if (risk.band === RISK_BANDS.RED) {
+        summary.critical += 1;
+        summary.needsAction += 1;
+      } else if (risk.band === RISK_BANDS.YELLOW) {
+        summary.suggestedAction += 1;
+      } else if (risk.band === RISK_BANDS.GREEN) {
+        summary.underObservation += 1;
+      } else {
+        summary.unknown += 1;
+      }
+
+      return summary;
+    },
+    {
+      ...EMPTY_RISK_SUMMARY,
+      total: risks.length,
+    },
+  );
+};
+
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { currentUser, displayName, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [urgentRisks, setUrgentRisks] = useState([]);
+  const [riskSummary, setRiskSummary] = useState(EMPTY_RISK_SUMMARY);
   const [incidents, setIncidents] = useState([]);
   const [actionPlans, setActionPlans] = useState([]);
 
@@ -152,9 +212,9 @@ export const DashboardPage = () => {
           getActionPlans(),
         ]);
 
-      setUrgentRisks(
-        toUrgentRisks(riskItems, riskAssessments).slice(0, DASHBOARD_LIMIT),
-      );
+      const enrichedRisks = toUrgentRisks(riskItems, riskAssessments);
+      setUrgentRisks(enrichedRisks.slice(0, DASHBOARD_LIMIT));
+      setRiskSummary(toRiskSummary(enrichedRisks));
       setIncidents(toIncidents(incidentItems).slice(0, DASHBOARD_LIMIT));
       setActionPlans(toActionPlans(actionPlanItems).slice(0, DASHBOARD_LIMIT));
       setError("");
@@ -228,7 +288,7 @@ export const DashboardPage = () => {
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <UrgentRisksCard risks={urgentRisks} />
+            <UrgentRisksCard risks={urgentRisks} summary={riskSummary} />
             <IncidentsCard incidents={incidents} />
             <ActionPlansCard actionPlans={actionPlans} />
             <NextRevisionCard />

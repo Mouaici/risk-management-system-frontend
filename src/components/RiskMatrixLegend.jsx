@@ -1,3 +1,5 @@
+import { RISK_BANDS } from "../utils/risk.js";
+
 const probabilityRows = [
   "1 Unlikely or very rarely",
   "2 Unlikely or rarely",
@@ -22,24 +24,24 @@ const intervalRows = [
   "> 10 times/year",
 ];
 
-const colorBands = [
+const severityBands = [
   {
-    name: "Red",
+    name: RISK_BANDS.RED.label,
     score: "16-25",
-    action: "Action",
-    classes: "bg-red-100 text-red-800",
+    action: RISK_BANDS.RED.actionLabel,
+    classes: RISK_BANDS.RED.classes,
   },
   {
-    name: "Yellow",
+    name: RISK_BANDS.YELLOW.label,
     score: "8-15",
-    action: "Suggested action",
-    classes: "bg-amber-100 text-amber-800",
+    action: RISK_BANDS.YELLOW.actionLabel,
+    classes: RISK_BANDS.YELLOW.classes,
   },
   {
-    name: "Green",
+    name: RISK_BANDS.GREEN.label,
     score: "1-7",
-    action: "Keep under observation",
-    classes: "bg-emerald-100 text-emerald-800",
+    action: RISK_BANDS.GREEN.actionLabel,
+    classes: RISK_BANDS.GREEN.classes,
   },
 ];
 
@@ -59,10 +61,10 @@ export const RiskMatrixLegend = () => {
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-800">
-            Color bands
+            Severity bands
           </h3>
           <ul className="space-y-2 text-sm">
-            {colorBands.map((band) => (
+            {severityBands.map((band) => (
               <li
                 key={band.name}
                 className="flex items-center justify-between rounded-lg border border-slate-200 p-2"
