@@ -62,6 +62,7 @@ const EMPTY_AUDIT_DETAILS = {
   nextAuditRevisionDate: null,
   auditExpirationDate: null,
   isoScope: "",
+  organizationName: "",
 };
 
 const sortByDateDescending = (a, b) => {
@@ -369,6 +370,7 @@ const toAuditDetails = (auditItem, organizationItem) => {
     auditExpirationDate:
       auditItem?.auditExpirationDate ?? auditItem?.AuditExpirationDate ?? null,
     isoScope: organizationItem?.isoScope ?? organizationItem?.IsoScope ?? "",
+    organizationName: organizationItem?.name ?? organizationItem?.Name ?? "",
   };
 };
 
@@ -448,8 +450,11 @@ export const DashboardPage = () => {
       return "";
     }
 
-    return `${currentUser.role || "User"} - organization ${currentUser.organizationId}`;
-  }, [currentUser]);
+    const organizationLabel =
+      auditDetails.organizationName ||
+      `organization ${currentUser.organizationId}`;
+    return `${currentUser.role || "User"} - ${organizationLabel}`;
+  }, [auditDetails.organizationName, currentUser]);
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -469,7 +474,10 @@ export const DashboardPage = () => {
       userEmail={currentUser?.email || "—"}
       onLogout={handleLogout}
     >
-      <div className="mb-4 flex items-center justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <AuditDatesStrip details={auditDetails} />
+        </div>
         <button
           type="button"
           onClick={handleRefreshData}
@@ -493,13 +501,10 @@ export const DashboardPage = () => {
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-            <div className="space-y-2">
-              <AuditDatesStrip details={auditDetails} />
-              <UrgentRisksCard
-                summary={riskSummary}
-                statusRows={riskStatusRows}
-              />
-            </div>
+            <UrgentRisksCard
+              summary={riskSummary}
+              statusRows={riskStatusRows}
+            />
             <IncidentsCard summary={incidentSummary} />
           </div>
 

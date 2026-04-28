@@ -32,13 +32,13 @@ const severityBands = [
     classes: RISK_BANDS.RED.classes,
   },
   {
-    name: RISK_BANDS.YELLOW.label,
+    name: "Medium",
     score: "8-15",
     action: RISK_BANDS.YELLOW.actionLabel,
     classes: RISK_BANDS.YELLOW.classes,
   },
   {
-    name: RISK_BANDS.GREEN.label,
+    name: "Low",
     score: "1-7",
     action: RISK_BANDS.GREEN.actionLabel,
     classes: RISK_BANDS.GREEN.classes,
