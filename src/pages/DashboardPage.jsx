@@ -3,15 +3,17 @@ import { useNavigate } from "react-router-dom";
 import {
   getActionPlans,
   getIncidents,
+  getOrganizationAuditDetails,
+  getOrganizationById,
   getRiskAssessments,
   getRisks,
 } from "../api/client.js";
 import { useAuth } from "../auth/useAuth.js";
 import { AppShell } from "../components/AppShell.jsx";
+import { AuditDatesStrip } from "../components/AuditDatesStrip.jsx";
 import { RiskMatrixLegend } from "../components/RiskMatrixLegend.jsx";
 import { ActionPlansCard } from "../components/cards/ActionPlansCard.jsx";
 import { IncidentsCard } from "../components/cards/IncidentsCard.jsx";
-import { NextRevisionCard } from "../components/cards/NextRevisionCard.jsx";
 import { UrgentRisksCard } from "../components/cards/UrgentRisksCard.jsx";
 import { toTimestamp } from "../utils/date.js";
 import {
@@ -55,6 +57,11 @@ const EMPTY_INCIDENT_SUMMARY = {
     count: 0,
     highSeverityCount: 0,
   })),
+};
+const EMPTY_AUDIT_DETAILS = {
+  nextAuditRevisionDate: null,
+  auditExpirationDate: null,
+  isoScope: "",
 };
 
 const sortByDateDescending = (a, b) => {
@@ -349,9 +356,26 @@ const toStatusSeverityRows = (risks) => {
   });
 };
 
+const toAuditDetails = (auditItem, organizationItem) => {
+  if (!auditItem && !organizationItem) {
+    return EMPTY_AUDIT_DETAILS;
+  }
+
+  return {
+    nextAuditRevisionDate:
+      auditItem?.nextAuditRevisionDate ??
+      auditItem?.NextAuditRevisionDate ??
+      null,
+    auditExpirationDate:
+      auditItem?.auditExpirationDate ?? auditItem?.AuditExpirationDate ?? null,
+    isoScope: organizationItem?.isoScope ?? organizationItem?.IsoScope ?? "",
+  };
+};
+
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { currentUser, displayName, logout } = useAuth();
+  const organizationId = currentUser?.organizationId ?? null;
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [riskSummary, setRiskSummary] = useState(EMPTY_RISK_SUMMARY);
@@ -365,23 +389,41 @@ export const DashboardPage = () => {
   const [incidentSummary, setIncidentSummary] = useState(
     EMPTY_INCIDENT_SUMMARY,
   );
+  const [auditDetails, setAuditDetails] = useState(EMPTY_AUDIT_DETAILS);
   const [actionPlans, setActionPlans] = useState([]);
 
   const loadDashboard = useCallback(async () => {
     try {
-      const [riskItems, riskAssessments, incidentItems, actionPlanItems] =
-        await Promise.all([
-          getRisks(),
-          getRiskAssessments(),
-          getIncidents(),
-          getActionPlans(),
-        ]);
+      const auditDetailsPromise = organizationId
+        ? getOrganizationAuditDetails(organizationId)
+        : Promise.resolve(null);
+      const organizationPromise = organizationId
+        ? getOrganizationById(organizationId)
+        : Promise.resolve(null);
+      const [
+        riskItems,
+        riskAssessments,
+        incidentItems,
+        actionPlanItems,
+        organizationAuditDetails,
+        organizationDetails,
+      ] = await Promise.all([
+        getRisks(),
+        getRiskAssessments(),
+        getIncidents(),
+        getActionPlans(),
+        auditDetailsPromise,
+        organizationPromise,
+      ]);
 
       const enrichedRisks = toUrgentRisks(riskItems, riskAssessments);
       const sortedIncidents = toIncidents(incidentItems);
       setRiskSummary(toRiskSummary(enrichedRisks));
       setRiskStatusRows(toStatusSeverityRows(enrichedRisks));
       setIncidentSummary(toIncidentSummary(sortedIncidents));
+      setAuditDetails(
+        toAuditDetails(organizationAuditDetails, organizationDetails),
+      );
       setActionPlans(toActionPlans(actionPlanItems).slice(0, DASHBOARD_LIMIT));
       setError("");
     } catch (requestError) {
@@ -389,7 +431,7 @@ export const DashboardPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [organizationId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -427,10 +469,7 @@ export const DashboardPage = () => {
       userEmail={currentUser?.email || "—"}
       onLogout={handleLogout}
     >
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-slate-600">
-          Clear overview of urgent risks, incidents and planned actions.
-        </p>
+      <div className="mb-4 flex items-center justify-end">
         <button
           type="button"
           onClick={handleRefreshData}
@@ -454,19 +493,20 @@ export const DashboardPage = () => {
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-            <UrgentRisksCard
-              summary={riskSummary}
-              statusRows={riskStatusRows}
-            />
+            <div className="space-y-2">
+              <AuditDatesStrip details={auditDetails} />
+              <UrgentRisksCard
+                summary={riskSummary}
+                statusRows={riskStatusRows}
+              />
+            </div>
             <IncidentsCard summary={incidentSummary} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <ActionPlansCard actionPlans={actionPlans} />
-            <NextRevisionCard />
+            <RiskMatrixLegend />
           </div>
-
-          <RiskMatrixLegend />
         </div>
       )}
     </AppShell>
