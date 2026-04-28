@@ -211,3 +211,37 @@ export const getActionPlans = async ({ signal } = {}) => {
     throw error;
   }
 };
+
+export const getOrganizationAuditDetails = async (
+  organizationId,
+  { signal } = {},
+) => {
+  try {
+    const response = await api.get(
+      `/api/organization/${organizationId}/audit-details`,
+      {
+        signal,
+        meta: { auth: true, retryOnUnauthorized: true },
+      },
+    );
+    return response.data ?? null;
+  } catch (requestError) {
+    const error = toApiError(requestError);
+    console.error("Failed to load organization audit details", error.message);
+    throw error;
+  }
+};
+
+export const getOrganizationById = async (organizationId, { signal } = {}) => {
+  try {
+    const response = await api.get(`/api/organization/${organizationId}`, {
+      signal,
+      meta: { auth: true, retryOnUnauthorized: true },
+    });
+    return response.data ?? null;
+  } catch (requestError) {
+    const error = toApiError(requestError);
+    console.error("Failed to load organization details", error.message);
+    throw error;
+  }
+};

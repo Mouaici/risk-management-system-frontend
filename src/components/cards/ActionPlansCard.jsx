@@ -24,12 +24,11 @@ export const ActionPlansCard = ({ actionPlans }) => {
                   {actionPlan.actionPlanStatus || "Status unknown"}
                 </span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-600">
+              <div className="mt-2 text-xs text-slate-600">
                 <p>
                   Planned completion:{" "}
                   {formatDate(actionPlan.plannedCompletionDate)}
                 </p>
-                <p>Owner user id: {actionPlan.ownerUserId ?? "—"}</p>
               </div>
             </li>
           ))}

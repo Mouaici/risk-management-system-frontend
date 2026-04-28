@@ -2,21 +2,21 @@ import { toTimestamp } from "./date.js";
 
 export const RISK_BANDS = {
   RED: {
-    label: "Red",
-    actionLabel: "Action",
+    label: "Critical",
+    actionLabel: "Needs action",
     min: 16,
     max: 25,
     classes: "bg-red-100 text-red-800",
   },
   YELLOW: {
-    label: "Yellow",
+    label: "Elevated",
     actionLabel: "Suggested action",
     min: 8,
     max: 15,
     classes: "bg-amber-100 text-amber-800",
   },
   GREEN: {
-    label: "Green",
+    label: "Monitored",
     actionLabel: "Keep under observation",
     min: 1,
     max: 7,
