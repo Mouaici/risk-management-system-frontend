@@ -33,6 +33,19 @@ const EMPTY_RISK_SUMMARY = {
   underObservation: 0,
   unknown: 0,
 };
+const STATUS_BUCKETS = [
+  "Open",
+  "In progress",
+  "Mitigated",
+  "Accepted",
+  "Closed",
+];
+const EMPTY_STATUS_SEVERITY_ROW = {
+  critical: 0,
+  medium: 0,
+  low: 0,
+  unknown: 0,
+};
 
 const sortByDateDescending = (a, b) => {
   const left = toTimestamp(a) ?? Number.NEGATIVE_INFINITY;
@@ -145,22 +158,65 @@ const toIncidents = (incidents) => {
   );
 };
 
+const toStatusBucket = (status) => {
+  const normalizedStatus = String(status || "")
+    .toLowerCase()
+    .trim();
+
+  if (!normalizedStatus) {
+    return "Open";
+  }
+
+  if (normalizedStatus.includes("accept")) {
+    return "Accepted";
+  }
+
+  if (normalizedStatus.includes("mitigat")) {
+    return "Mitigated";
+  }
+
+  if (
+    normalizedStatus.includes("closed") ||
+    normalizedStatus.includes("resolved") ||
+    normalizedStatus.includes("complete")
+  ) {
+    return "Closed";
+  }
+
+  if (
+    normalizedStatus.includes("in progress") ||
+    normalizedStatus.includes("ongoing") ||
+    normalizedStatus.includes("active")
+  ) {
+    return "In progress";
+  }
+
+  return "Open";
+};
+
+const toSeverityKey = (riskBand) => {
+  if (riskBand === RISK_BANDS.RED) {
+    return "critical";
+  }
+
+  if (riskBand === RISK_BANDS.YELLOW) {
+    return "medium";
+  }
+
+  if (riskBand === RISK_BANDS.GREEN) {
+    return "low";
+  }
+
+  return "unknown";
+};
+
 const toRiskSummary = (risks) => {
   return risks.reduce(
     (summary, risk) => {
-      const normalizedStatus = String(risk.status || "")
-        .toLowerCase()
-        .trim();
-      const isMitigated =
-        normalizedStatus.includes("mitigated") ||
-        normalizedStatus.includes("resolved") ||
-        normalizedStatus.includes("closed") ||
-        normalizedStatus.includes("complete");
-      const isInProgress =
-        normalizedStatus.includes("in progress") ||
-        normalizedStatus.includes("ongoing") ||
-        normalizedStatus.includes("active");
-      const isOpen = !isMitigated;
+      const statusBucket = toStatusBucket(risk.status);
+      const isOpen = statusBucket === "Open";
+      const isInProgress = statusBucket === "In progress";
+      const isMitigated = statusBucket === "Mitigated";
 
       if (isOpen) {
         summary.open += 1;
@@ -172,12 +228,14 @@ const toRiskSummary = (risks) => {
         summary.mitigated += 1;
       }
 
-      if (risk.band === RISK_BANDS.RED) {
+      const severityKey = toSeverityKey(risk.band);
+
+      if (severityKey === "critical") {
         summary.critical += 1;
         summary.needsAction += 1;
-      } else if (risk.band === RISK_BANDS.YELLOW) {
+      } else if (severityKey === "medium") {
         summary.suggestedAction += 1;
-      } else if (risk.band === RISK_BANDS.GREEN) {
+      } else if (severityKey === "low") {
         summary.underObservation += 1;
       } else {
         summary.unknown += 1;
@@ -192,13 +250,46 @@ const toRiskSummary = (risks) => {
   );
 };
 
+const toStatusSeverityRows = (risks) => {
+  const rowsByStatus = STATUS_BUCKETS.reduce((accumulator, status) => {
+    return {
+      ...accumulator,
+      [status]: {
+        status,
+        ...EMPTY_STATUS_SEVERITY_ROW,
+      },
+    };
+  }, {});
+
+  risks.forEach((risk) => {
+    const statusBucket = toStatusBucket(risk.status);
+    const severityKey = toSeverityKey(risk.band);
+    rowsByStatus[statusBucket][severityKey] += 1;
+  });
+
+  return STATUS_BUCKETS.map((status) => {
+    const row = rowsByStatus[status];
+
+    return {
+      ...row,
+      total: row.critical + row.medium + row.low + row.unknown,
+    };
+  });
+};
+
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { currentUser, displayName, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [urgentRisks, setUrgentRisks] = useState([]);
   const [riskSummary, setRiskSummary] = useState(EMPTY_RISK_SUMMARY);
+  const [riskStatusRows, setRiskStatusRows] = useState(
+    STATUS_BUCKETS.map((status) => ({
+      status,
+      ...EMPTY_STATUS_SEVERITY_ROW,
+      total: 0,
+    })),
+  );
   const [incidents, setIncidents] = useState([]);
   const [actionPlans, setActionPlans] = useState([]);
 
@@ -213,8 +304,8 @@ export const DashboardPage = () => {
         ]);
 
       const enrichedRisks = toUrgentRisks(riskItems, riskAssessments);
-      setUrgentRisks(enrichedRisks.slice(0, DASHBOARD_LIMIT));
       setRiskSummary(toRiskSummary(enrichedRisks));
+      setRiskStatusRows(toStatusSeverityRows(enrichedRisks));
       setIncidents(toIncidents(incidentItems).slice(0, DASHBOARD_LIMIT));
       setActionPlans(toActionPlans(actionPlanItems).slice(0, DASHBOARD_LIMIT));
       setError("");
@@ -287,13 +378,20 @@ export const DashboardPage = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <UrgentRisksCard risks={urgentRisks} summary={riskSummary} />
-            <IncidentsCard incidents={incidents} />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+            <UrgentRisksCard
+              summary={riskSummary}
+              statusRows={riskStatusRows}
+            />
             <ActionPlansCard actionPlans={actionPlans} />
-            <NextRevisionCard />
           </div>
-          <RiskMatrixLegend />
+
+          <IncidentsCard incidents={incidents} />
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
+            <NextRevisionCard />
+            <RiskMatrixLegend />
+          </div>
         </div>
       )}
     </AppShell>
