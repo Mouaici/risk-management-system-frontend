@@ -7,22 +7,34 @@ Frontend for the `risk-management-system` backend API.
 - Vite + React (JavaScript)
 - React Router
 - Tailwind CSS
+- Axios
+- ESLint
 
 ## Features
 
+- Route scope:
+  - `/login` for sign-in
+  - `/` for dashboard (protected route)
 - Session-based authentication with:
-  - Access token in memory
+  - Access token stored in memory
   - Refresh token in HttpOnly cookie
-  - Automatic refresh and request retry on 401
-- Dashboard cards:
-  - Most severe/urgent risks (based on latest risk assessment)
-  - Incidents (ordered by `occuredOn` desc)
-  - Action plans (ordered by `plannedCompletionDate` asc)
-  - Next revision date placeholder
-- Risk matrix legend using your Excel wording and color bands:
-  - Red `16-25` => Action
+  - Session bootstrap on app load via `/api/auth/refresh`
+  - Automatic 401 refresh and original request retry (single shared refresh flow)
+- Dashboard:
+  - Audit strip with `ISO scope`, `Next revision`, and `Audit expiration`
+  - Risk overview with:
+    - status/severity stacked chart
+    - severity composition donut chart
+    - summary tiles (open, critical, in progress, unknown score)
+  - Incidents card with status chart and high-severity summary
+  - Action plans card ordered by `plannedCompletionDate` and filtered to exclude completed/closed/done statuses
+  - Manual `Refresh data` action
+- Risk matrix legend with color bands:
+  - Red `16-25` => Needs action
   - Yellow `8-15` => Suggested action
   - Green `1-7` => Keep under observation
+
+Current scope: this frontend is currently dashboard-focused and does not yet include full CRUD pages for risks, incidents, and action plans.
 
 ## Future improvements
 
@@ -45,6 +57,8 @@ This frontend is aligned with these backend routes:
 - `GET /api/risk-assessment`
 - `GET /api/incidents`
 - `GET /api/action-plans`
+- `GET /api/organization/{organizationId}`
+- `GET /api/organization/{organizationId}/audit-details`
 
 List endpoints are expected to return plain arrays.
 
