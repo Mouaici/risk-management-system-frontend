@@ -24,6 +24,15 @@ Frontend for the `risk-management-system` backend API.
   - Yellow `8-15` => Suggested action
   - Green `1-7` => Keep under observation
 
+## Future improvements
+
+- Add core pages and workflows for risks, incidents, and action plans
+- Improve loading/empty/error states with clearer retry behavior
+- Make dashboard cards clickable to open the matching risk category
+- Strengthen filtering, sorting, search, and responsive/a11y quality
+
+Detailed backlog: [FUTURE_IMPROVEMENTS.md](./FUTURE_IMPROVEMENTS.md)
+
 ## API assumptions
 
 This frontend is aligned with these backend routes:
